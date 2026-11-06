@@ -1,0 +1,54 @@
+services:
+  php-app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: php_admin_product_app
+    ports:
+      - "8090:80"
+    volumes:
+      - ./app:/var/www/html
+    env_file:
+      - .env
+    depends_on:
+      - mysql
+    networks:
+      - admin_product_network
+
+  mysql:
+    image: mysql:8.0
+    container_name: php_admin_product_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_admin_product_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - admin_product_network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: php_admin_product_phpmyadmin
+    restart: always
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+    ports:
+      - "8091:80"
+    depends_on:
+      - mysql
+    networks:
+      - admin_product_network
+
+volumes:
+  mysql_admin_product_data:
+
+networks:
+  admin_product_network:
+    driver: bridge
