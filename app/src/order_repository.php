@@ -160,8 +160,10 @@ function order_available_products(): array {
  * Tạo đơn hàng, chi tiết đơn hàng, trừ kho và ghi lịch sử xuất kho.
  * Tất cả được thực hiện trong cùng một transaction.
  */
-function order_create(array $customer, array $items, int $adminId): int {
-    $adminId = order_require_positive_int($adminId, "Mã quản trị viên");
+function order_create(array $customer, array $items, ?int $adminId = null): int {
+    if ($adminId !== null) {
+        $adminId = order_require_positive_int($adminId, "Mã quản trị viên");
+    }
     $items = order_normalize_items($items);
     $customerId = order_parse_customer_id($customer["customer_id"] ?? null);
 
@@ -188,6 +190,12 @@ function order_create(array $customer, array $items, int $adminId): int {
             $customerName = trim((string) $savedCustomer["name"]);
             $customerPhone = trim((string) $savedCustomer["phone"]);
             $shippingAddress = trim((string) $savedCustomer["address"]);
+            if (isset($customer["address_snapshot"]) && is_string($customer["address_snapshot"])) {
+                $shippingAddress = trim($customer["address_snapshot"]);
+            }
+            if (isset($customer["phone_snapshot"]) && is_string($customer["phone_snapshot"])) {
+                $customerPhone = trim($customer["phone_snapshot"]);
+            }
         } else {
             // Khách mua không đăng ký: yêu cầu đủ thông tin giao hàng.
             $customerName = order_require_text($customer["name"] ?? null, "Tên khách hàng");
@@ -367,7 +375,7 @@ function order_find(int $id): ?array {
     }
 
     $itemsStmt = $pdo->prepare(
-        "SELECT product_name, product_sku, quantity, unit_price, line_total
+        "SELECT id, product_name, product_sku, quantity, unit_price, line_total
          FROM order_items
          WHERE order_id = :order_id
          ORDER BY id"
@@ -383,9 +391,11 @@ function order_find(int $id): ?array {
  * Khi hủy: khóa đơn, khóa sản phẩm, hoàn kho, ghi lịch sử nhập kho,
  * sau đó cập nhật trạng thái trong cùng một transaction.
  */
-function order_update_status(int $id, string $status, int $adminId): void {
+function order_update_status(int $id, string $status, ?int $adminId = null): void {
     $id = order_require_positive_int($id, "Mã đơn hàng");
-    $adminId = order_require_positive_int($adminId, "Mã quản trị viên");
+    if ($adminId !== null) {
+        $adminId = order_require_positive_int($adminId, "Mã quản trị viên");
+    }
 
     $labels = order_status_labels();
     if (!isset($labels[$status])) {

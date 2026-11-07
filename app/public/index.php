@@ -10,6 +10,7 @@ require_once __DIR__ . "/../src/customer_repository.php";
 require_once __DIR__ . "/../src/inventory_repository.php";
 require_once __DIR__ . "/../src/activity_repository.php";
 require_once __DIR__ . "/../src/api.php";
+require_once __DIR__ . "/../src/lab/api_v2.php";
 
 $path = rtrim(parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH), "/");
 $path = $path === "" ? "/" : $path;
@@ -154,6 +155,9 @@ function validate_inventory_input(array $input): array {
     ]];
 }
 
+if ($path === "/api/v2" || str_starts_with($path, "/api/v2/")) {
+    lab_api_dispatch($path);
+}
 if ($path === "/api" || str_starts_with($path, "/api/")) {
     api_dispatch($path);
 }

@@ -1,0 +1,71 @@
+services:
+  php-app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: phplab_php_app
+    ports:
+      - "127.0.0.1:8090:80"
+    volumes:
+      - ./app:/var/www/html
+      - ./database:/var/www/database:ro
+    env_file:
+      - .env.lab
+    depends_on:
+      - mysql
+    networks:
+      - lab_network
+
+  mysql:
+    image: mysql:8.0
+    container_name: phplab_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-lab_root_password}
+      MYSQL_DATABASE: ${DB_DATABASE:-admin_product_db}
+      MYSQL_USER: ${DB_USERNAME:-admin_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-lab_db_password}
+    ports:
+      - "127.0.0.1:3308:3306"
+    volumes:
+      - mysql_lab_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - lab_network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phplab_phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+    ports:
+      - "127.0.0.1:8091:80"
+    depends_on:
+      - mysql
+    networks:
+      - lab_network
+
+  lab-tests:
+    build:
+      context: .
+      dockerfile: docker/lab-tests/Dockerfile
+    env_file:
+      - .env.lab
+    environment:
+      LAB_TEST_BASE_URL: http://php-app
+    depends_on:
+      - php-app
+      - mysql
+    networks:
+      - lab_network
+    profiles:
+      - test
+
+volumes:
+  mysql_lab_data:
+    name: phplab_mysql_lab_data
+
+networks:
+  lab_network:
+    driver: bridge
